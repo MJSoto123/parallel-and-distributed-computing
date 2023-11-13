@@ -1,15 +1,17 @@
 #include <stdio.h>
+#include <iostream>
 #include <stdlib.h>
 #include <assert.h>
 #include <pthread.h>
 #include <unistd.h>
+using namespace std;
 
 struct list_node_s{
     int data;
     struct list_node_s *next;
 };
 
-struct list_node_s *head_p;
+struct list_node_s *head_p = NULL;
 pthread_rwlock_t    rwlock;
 
 int member(int val){
@@ -18,6 +20,7 @@ int member(int val){
     if(curr_p == NULL || curr_p->data > val) return 0;
     else return 1;
 }
+
 int insert(int val) {
     struct list_node_s* curr_p = head_p;
     struct list_node_s* pred_p;
@@ -27,7 +30,7 @@ int insert(int val) {
         curr_p = curr_p->next;
     }
     if(curr_p == NULL || curr_p->data > val){
-        temp_p = malloc(sizeof (struct list_node_s));
+        temp_p = new list_node_s();
         temp_p->data = val;
         temp_p->next = curr_p;
         if(pred_p == NULL) 
@@ -39,4 +42,44 @@ int insert(int val) {
     else{
         return 0; 
     }   
+}
+
+void *Thread_Work_Insert(void *arg){
+    int target = (int)arg;
+    pthread_rwlock_wrlock(&rwlock);
+
+    if(insert(target)) std::cout << "Insertado " << target << "\n";
+    else std::cout << "Error al insertar " << target << "\n";
+
+    pthread_rwlock_unlock(&rwlock);
+    return NULL;
+}
+
+void *Thread_Work_Find(void *arg){
+    int target = (int)arg;
+    pthread_rwlock_rdlock(&rwlock);
+
+    if(member(target)) std:: cout << "Encontrado " << target << "\n";
+    else std::cout << "NO encontrado " << target << "\n"; 
+
+    pthread_rwlock_unlock(&rwlock);
+    return NULL;
+}
+
+int main(){
+    pthread_t a[10];
+    head_p = NULL;
+    pthread_rwlock_init(&rwlock, NULL);
+    for(int i = 0; i < 5; i++){
+        pthread_create(&a[i], NULL , &Thread_Work_Insert , (void*)(i));
+    }
+
+    for(int i = 5; i < 10; i++){
+        pthread_create(&a[i], NULL , &Thread_Work_Find , (void*)(i - 5));
+    }
+    for(int i = 0; i < 10; i++){
+        pthread_join(a[i] , NULL);
+    }
+    pthread_rwlock_destroy(&rwlock);
+    return 0;
 }

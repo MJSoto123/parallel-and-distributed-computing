@@ -1,12 +1,18 @@
 #include <stdio.h>
+#include <iostream>
 #include <stdlib.h>
+#include <assert.h>
 #include <pthread.h>
+#include <unistd.h>
+using namespace std;
+
 struct list_node_s {
    int    data;
    pthread_mutex_t mutex;
    struct list_node_s* next;
 };
-struct list_node_s* head = NULL;  
+
+struct list_node_s* head = NULL;
 pthread_mutex_t head_mutex;
 
 int member(int value) {
@@ -79,7 +85,7 @@ int insert(int value) {
     }
 
     if (curr == NULL || curr->data > value) {
-        temp = malloc(sizeof(struct list_node_s));
+        temp = new list_node_s();
         pthread_mutex_init(&(temp->mutex), NULL);
         temp->data = value;
         temp->next = curr;
@@ -103,4 +109,37 @@ int insert(int value) {
     }
 
     return rv;
+}
+
+void *Thread_Work_Insert(void *arg){
+    int target = (int)arg;
+
+    if(insert(target)) std::cout << "Insertado " << target << "\n";
+    else std::cout << "Error al insertar " << target << "\n";
+
+    return NULL;
+}
+
+void *Thread_Work_Find(void *arg){
+    int target = (int)arg;
+
+    if(member(target)) std:: cout << "Encontrado " << target << "\n";
+    else std::cout << "NO encontrado " << target << "\n"; 
+
+    return NULL;
+}
+
+int main(){
+    pthread_t a[10];
+    for(int i = 0; i < 5; i++){
+        pthread_create(&a[i], NULL , &Thread_Work_Insert , (void*)(i));
+    }
+    
+    for(int i = 5; i < 10; i++){
+        pthread_create(&a[i], NULL , &Thread_Work_Find , (void*)(i - 5));
+    }
+    for(int i = 0; i < 10; i++){
+        pthread_join(a[i] , NULL);
+    }
+    return 0;
 }
